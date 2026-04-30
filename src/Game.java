@@ -22,8 +22,7 @@ public class Game extends JPanel implements Runnable, KeyListener {
 
     private final int BALL_SIZE = 18;
     private double ballX, ballY;
-    private double ballDX = -4.0, ballDY = 3.0; // use double for smooth physics
-    private double ballSpeed = 5.0;
+    private double ballDX = -4.0, ballDY = 3.0;
 
     private boolean up, down;
     private int score = 0;
@@ -54,7 +53,7 @@ public class Game extends JPanel implements Runnable, KeyListener {
     @Override
     public void addNotify() {
         super.addNotify();
-        requestFocusInWindow(); // ensure keys work
+        requestFocusInWindow();
         start();
     }
 
@@ -69,26 +68,34 @@ public class Game extends JPanel implements Runnable, KeyListener {
     @Override
     public void run() {
         final int targetFps = 60;
-        final long targetDelay = 1000 / targetFps; // ms
+        final long targetDelay = 1000 / targetFps;
         while (true) {
             long t0 = System.currentTimeMillis();
-            if (!paused && !gameOver) updateState();
+            if (!paused && !gameOver) {
+                updateState();
+            }
             repaint();
             long took = System.currentTimeMillis() - t0;
             long sleep = Math.max(2, targetDelay - took);
-            try { Thread.sleep(sleep); } catch (InterruptedException ignored) {}
+            try {
+                Thread.sleep(sleep);
+            } catch (InterruptedException ignored) {
+            }
         }
     }
 
     private void updateState() {
-        if (up) paddleY -= PADDLE_SPEED;
-        if (down) paddleY += PADDLE_SPEED;
+        if (up) {
+            paddleY -= PADDLE_SPEED;
+        }
+        if (down) {
+            paddleY += PADDLE_SPEED;
+        }
         paddleY = Math.max(0, Math.min(HEIGHT - PADDLE_H, paddleY));
 
         ballX += ballDX;
         ballY += ballDY;
 
-        // Top / bottom collision
         if (ballY <= 0) {
             ballY = 0;
             ballDY = -ballDY;
@@ -97,53 +104,52 @@ public class Game extends JPanel implements Runnable, KeyListener {
             ballDY = -ballDY;
         }
 
-        // Right wall: player scores when ball hits right wall, then bounce back
         if (ballX + BALL_SIZE >= WIDTH) {
             ballX = WIDTH - BALL_SIZE;
             ballDX = -Math.abs(ballDX);
             score++;
-            if (score > highScore) highScore = score;
-            // slightly speed up
+            if (score > highScore) {
+                highScore = score;
+            }
             ballDX *= 1.02;
             ballDY *= 1.02;
         }
 
-        // Paddle collision (only when ball moving left)
         if (ballDX < 0 && ballX <= PADDLE_X + PADDLE_W && ballX + BALL_SIZE >= PADDLE_X) {
             if (ballY + BALL_SIZE >= paddleY && ballY <= paddleY + PADDLE_H) {
-                // place ball outside paddle to prevent sticking
                 ballX = PADDLE_X + PADDLE_W;
 
-                // Compute bounce based on where the ball hits the paddle
                 double relativeIntersectY = (paddleY + PADDLE_H / 2.0) - (ballY + BALL_SIZE / 2.0);
                 double normalizedRelativeIntersectionY = relativeIntersectY / (PADDLE_H / 2.0);
                 double maxBounceAngle = Math.toRadians(75);
                 double bounceAngle = normalizedRelativeIntersectionY * maxBounceAngle;
 
                 double speed = Math.hypot(ballDX, ballDY);
-                speed = Math.min(12.0, speed * 1.05); // increase speed but cap it
+                speed = Math.min(12.0, speed * 1.05);
 
                 ballDX = speed * Math.cos(bounceAngle);
                 ballDY = -speed * Math.sin(bounceAngle);
 
                 score++;
-                if (score > highScore) highScore = score;
+                if (score > highScore) {
+                    highScore = score;
+                }
             }
         }
 
-        // Missed paddle: ball went past left edge
         if (ballX < 0) {
             lives--;
             if (lives <= 0) {
                 gameOver = true;
                 paused = false;
             } else {
-                // reset ball and briefly pause
                 resetBall();
                 paused = true;
-                // unpause after short delay on separate thread so main loop isn't blocked
                 new Thread(() -> {
-                    try { Thread.sleep(800); } catch (InterruptedException ignored) {}
+                    try {
+                        Thread.sleep(800);
+                    } catch (InterruptedException ignored) {
+                    }
                     paused = false;
                 }, "Unpause-Timer").start();
             }
@@ -153,11 +159,10 @@ public class Game extends JPanel implements Runnable, KeyListener {
     private void resetBall() {
         ballX = WIDTH / 2.0 - BALL_SIZE / 2.0;
         ballY = HEIGHT / 2.0 - BALL_SIZE / 2.0;
-        // start towards player (left) or alternate randomly
-        double angle = Math.toRadians((Math.random() * 120) - 60); // -60..60 deg
-        double s = 5.0 + Math.random() * 2.0;
-        ballDX = -Math.abs(s * Math.cos(angle));
-        ballDY = s * Math.sin(angle);
+        double angle = Math.toRadians((Math.random() * 120) - 60);
+        double speed = 5.0 + Math.random() * 2.0;
+        ballDX = -Math.abs(speed * Math.cos(angle));
+        ballDY = speed * Math.sin(angle);
     }
 
     @Override
@@ -166,12 +171,10 @@ public class Game extends JPanel implements Runnable, KeyListener {
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // Draw paddle and ball
         g2.setColor(Color.WHITE);
         g2.fillRect(PADDLE_X, paddleY, PADDLE_W, PADDLE_H);
         g2.fillOval((int) Math.round(ballX), (int) Math.round(ballY), BALL_SIZE, BALL_SIZE);
 
-        // HUD
         g2.setFont(new Font("SansSerif", Font.BOLD, 18));
         g2.drawString("Score: " + score, WIDTH - 150, 28);
         g2.drawString("High: " + highScore, WIDTH - 150, 52);
@@ -203,9 +206,15 @@ public class Game extends JPanel implements Runnable, KeyListener {
 
     @Override
     public void keyPressed(KeyEvent e) {
-        if (e.getKeyCode() == KeyEvent.VK_UP) up = true;
-        if (e.getKeyCode() == KeyEvent.VK_DOWN) down = true;
-        if (e.getKeyCode() == KeyEvent.VK_P) paused = !paused;
+        if (e.getKeyCode() == KeyEvent.VK_UP) {
+            up = true;
+        }
+        if (e.getKeyCode() == KeyEvent.VK_DOWN) {
+            down = true;
+        }
+        if (e.getKeyCode() == KeyEvent.VK_P) {
+            paused = !paused;
+        }
         if (e.getKeyCode() == KeyEvent.VK_R) {
             initGame();
             resetBall();
@@ -219,12 +228,17 @@ public class Game extends JPanel implements Runnable, KeyListener {
 
     @Override
     public void keyReleased(KeyEvent e) {
-        if (e.getKeyCode() == KeyEvent.VK_UP) up = false;
-        if (e.getKeyCode() == KeyEvent.VK_DOWN) down = false;
+        if (e.getKeyCode() == KeyEvent.VK_UP) {
+            up = false;
+        }
+        if (e.getKeyCode() == KeyEvent.VK_DOWN) {
+            down = false;
+        }
     }
 
     @Override
-    public void keyTyped(KeyEvent e) {}
+    public void keyTyped(KeyEvent e) {
+    }
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
